@@ -1,23 +1,10 @@
-import { Kafka, Partitioners } from 'kafkajs';
+import { SQSClient, SendMessageBatchCommand } from '@aws-sdk/client-sqs';
 import Parser from 'rss-parser';
 import { config } from './config';
 
 const parser = new Parser();
 
-const kafka = new Kafka({
-    clientId: config.kafka.clientId,
-    brokers: config.kafka.brokers,
-    ssl: true,
-    sasl: {
-        mechanism: 'plain',
-        username: config.kafka.username,
-        password: config.kafka.password,
-    },
-});
-
-const producer = kafka.producer({
-    createPartitioner: Partitioners.LegacyPartitioner,
-});
+const sqs = new SQSClient({ region: config.aws.region });
 
 interface Article {
     title: string;
@@ -33,10 +20,19 @@ export const fetchAndProduce = async () => {
     console.log('🚀 Starting RSS Fetcher...');
 
     try {
-        await producer.connect();
-        console.log('✅ Connected to Kafka');
+        if (!config.aws.sqsQueueUrl) {
+            throw new Error('SQS_QUEUE_URL is not set');
+        }
 
-        const messages = [];
+        const batch: { Id: string; MessageBody: string }[] = [];
+        let batchSeq = 0;
+        const flushBatch = async () => {
+            if (batch.length === 0) return;
+            await sqs.send(new SendMessageBatchCommand({
+                QueueUrl: config.aws.sqsQueueUrl,
+                Entries: batch.splice(0, batch.length),
+            }));
+        };
 
         for (const feedConfig of config.feeds) {
             try {
@@ -59,37 +55,37 @@ export const fetchAndProduce = async () => {
                         fetchedAt: new Date().toISOString(),
                     };
 
-                    // Use link as key for deduplication (Kafka Compaction or Consumer checks)
-                    messages.push({
-                        key: article.link,
-                        value: JSON.stringify(article),
+                    batch.push({
+                        Id: `msg-${batchSeq++}`,
+                        MessageBody: JSON.stringify(article),
                     });
+
+                    if (batch.length === 10) {
+                        await flushBatch();
+                    }
                 }
             } catch (err) {
                 console.error(`❌ Error fetching ${feedConfig.name}:`, err);
             }
         }
 
-        if (messages.length > 0) {
-            console.log(`📤 Sending ${messages.length} articles to Kafka topic: ${config.kafka.topic}`);
-            await producer.send({
-                topic: config.kafka.topic,
-                messages,
-            });
-            console.log('✅ Messages sent successfully');
-        } else {
-            console.log('⚠️ No articles found to send.');
-        }
+        await flushBatch();
 
     } catch (error) {
         console.error('❌ Critical Error:', error);
-    } finally {
-        await producer.disconnect();
-        console.log('👋 Producer disconnected');
     }
 };
 
 // If running locally
 if (require.main === module) {
+    // Run immediately
     fetchAndProduce();
+
+    // Then run every 15 minutes
+    const INTERVAL_MS = 15 * 60 * 1000;
+    setInterval(() => {
+        fetchAndProduce();
+    }, INTERVAL_MS);
+
+    console.log(`🔄 Producer scheduled to run every ${INTERVAL_MS / 60000} minutes`);
 }

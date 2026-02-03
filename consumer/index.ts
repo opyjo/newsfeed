@@ -1,21 +1,9 @@
-import { Kafka } from 'kafkajs';
+import { ReceiveMessageCommand, DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { config } from './config';
 
-// Initialize Kafka
-const kafka = new Kafka({
-    clientId: 'ai-news-consumer',
-    brokers: config.kafka.brokers,
-    ssl: true,
-    sasl: {
-        mechanism: 'plain',
-        username: config.kafka.username,
-        password: config.kafka.password,
-    },
-});
-
-const consumer = kafka.consumer({ groupId: config.kafka.groupId });
+const sqs = new SQSClient({ region: config.aws.region });
 
 // Initialize DynamoDB
 const client = new DynamoDBClient({ region: config.aws.region });
@@ -51,18 +39,30 @@ const saveToDynamoDB = async (article: Article) => {
 };
 
 export const runConsumer = async () => {
-    console.log('🚀 Starting Kafka Consumer...');
+    console.log('🚀 Starting SQS Consumer...');
 
     try {
-        await consumer.connect();
-        await consumer.subscribe({ topic: config.kafka.topic, fromBeginning: true });
+        if (!config.aws.sqsQueueUrl) {
+            throw new Error('SQS_QUEUE_URL is not set');
+        }
 
-        await consumer.run({
-            eachMessage: async ({ topic, partition, message }) => {
-                if (!message.value) return;
+        while (true) {
+            const response = await sqs.send(new ReceiveMessageCommand({
+                QueueUrl: config.aws.sqsQueueUrl,
+                MaxNumberOfMessages: 10,
+                WaitTimeSeconds: 20,
+            }));
+
+            const messages = response.Messages || [];
+            if (messages.length === 0) {
+                continue;
+            }
+
+            for (const message of messages) {
+                if (!message.Body || !message.ReceiptHandle) continue;
 
                 try {
-                    const article = JSON.parse(message.value.toString()) as Article;
+                    const article = JSON.parse(message.Body) as Article;
                     console.log(`📥 Received: ${article.title}`);
 
                     // Simple Filter: Check if title contains AI keywords (Basic example)
@@ -78,11 +78,15 @@ export const runConsumer = async () => {
                         console.log(`Skipped (Not relevant): ${article.title}`);
                     }
 
+                    await sqs.send(new DeleteMessageCommand({
+                        QueueUrl: config.aws.sqsQueueUrl,
+                        ReceiptHandle: message.ReceiptHandle,
+                    }));
                 } catch (err) {
                     console.error('❌ Error processing message:', err);
                 }
-            },
-        });
+            }
+        }
 
     } catch (error) {
         console.error('❌ Critical Consumer Error:', error);

@@ -3,12 +3,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const config = {
-  kafka: {
-    brokers: (process.env.KAFKA_BROKERS || '').split(','),
-    username: process.env.KAFKA_USERNAME || '',
-    password: process.env.KAFKA_PASSWORD || '',
-    clientId: 'ai-news-producer',
-    topic: process.env.KAFKA_TOPIC_RAW || 'raw-articles',
+  aws: {
+    region: process.env.AWS_REGION || 'us-east-1',
+    sqsQueueUrl: process.env.SQS_QUEUE_URL || '',
   },
   feeds: [
     {
