@@ -1,27 +1,17 @@
-import { ReceiveMessageCommand, DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
-import { config } from './config';
-
-const sqs = new SQSClient({ region: config.aws.region });
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.runConsumer = void 0;
+const client_sqs_1 = require("@aws-sdk/client-sqs");
+const client_dynamodb_1 = require("@aws-sdk/client-dynamodb");
+const lib_dynamodb_1 = require("@aws-sdk/lib-dynamodb");
+const config_1 = require("./config");
+const sqs = new client_sqs_1.SQSClient({ region: config_1.config.aws.region });
 // Initialize DynamoDB
-const client = new DynamoDBClient({ region: config.aws.region });
-const docClient = DynamoDBDocumentClient.from(client);
-
-interface Article {
-    title: string;
-    link: string;
-    pubDate: string;
-    contentSnippet?: string;
-    source: string;
-    guid?: string;
-    fetchedAt: string;
-}
-
-const saveToDynamoDB = async (article: Article) => {
-    const command = new PutCommand({
-        TableName: config.aws.tableName,
+const client = new client_dynamodb_1.DynamoDBClient({ region: config_1.config.aws.region });
+const docClient = lib_dynamodb_1.DynamoDBDocumentClient.from(client);
+const saveToDynamoDB = async (article) => {
+    const command = new lib_dynamodb_1.PutCommand({
+        TableName: config_1.config.aws.tableName,
         Item: {
             id: article.link,
             publishedAt: article.pubDate, // Required if Sort Key is defined
@@ -29,60 +19,54 @@ const saveToDynamoDB = async (article: Article) => {
             processedAt: new Date().toISOString(),
         },
     });
-
     try {
         await docClient.send(command);
         console.log(`💾 Saved: ${article.title.substring(0, 50)}...`);
-    } catch (err) {
+    }
+    catch (err) {
         console.error('❌ Error saving to DynamoDB:', err);
     }
 };
-
-export const runConsumer = async () => {
+const runConsumer = async () => {
     console.log('🚀 Starting SQS Consumer...');
-
     try {
-        if (!config.aws.sqsQueueUrl) {
+        if (!config_1.config.aws.sqsQueueUrl) {
             throw new Error('SQS_QUEUE_URL is not set');
         }
-
         while (true) {
-            const response = await sqs.send(new ReceiveMessageCommand({
-                QueueUrl: config.aws.sqsQueueUrl,
+            const response = await sqs.send(new client_sqs_1.ReceiveMessageCommand({
+                QueueUrl: config_1.config.aws.sqsQueueUrl,
                 MaxNumberOfMessages: 10,
                 WaitTimeSeconds: 20,
             }));
-
             const messages = response.Messages || [];
             if (messages.length === 0) {
                 continue;
             }
-
             for (const message of messages) {
-                if (!message.Body || !message.ReceiptHandle) continue;
-
+                if (!message.Body || !message.ReceiptHandle)
+                    continue;
                 try {
-                    const article = JSON.parse(message.Body) as Article;
+                    const article = JSON.parse(message.Body);
                     console.log(`📥 Received: ${article.title}`);
-
                     // Save all tech news articles (filtering removed for broader coverage)
                     await saveToDynamoDB(article);
-
-                    await sqs.send(new DeleteMessageCommand({
-                        QueueUrl: config.aws.sqsQueueUrl,
+                    await sqs.send(new client_sqs_1.DeleteMessageCommand({
+                        QueueUrl: config_1.config.aws.sqsQueueUrl,
                         ReceiptHandle: message.ReceiptHandle,
                     }));
-                } catch (err) {
+                }
+                catch (err) {
                     console.error('❌ Error processing message:', err);
                 }
             }
         }
-
-    } catch (error) {
+    }
+    catch (error) {
         console.error('❌ Critical Consumer Error:', error);
     }
 };
-
+exports.runConsumer = runConsumer;
 if (require.main === module) {
-    runConsumer();
+    (0, exports.runConsumer)();
 }

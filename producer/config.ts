@@ -52,5 +52,80 @@ export const config = {
       name: 'NVIDIA Blog',
       url: 'https://blogs.nvidia.com/feed/',
     },
+    // General Tech News
+    {
+      name: 'Hacker News',
+      url: 'https://news.ycombinator.com/rss',
+    },
+    {
+      name: 'Ars Technica',
+      url: 'https://arstechnica.com/feed/',
+    },
+    {
+      name: 'Wired',
+      url: 'https://www.wired.com/feed/rss',
+    },
+    {
+      name: 'The Register',
+      url: 'https://www.theregister.com/headlines.atom',
+    },
+    {
+      name: 'TechCrunch',
+      url: 'https://techcrunch.com/feed/',
+    },
+    {
+      name: 'The Verge',
+      url: 'https://www.theverge.com/rss/index.xml',
+    },
+    {
+      name: 'Slashdot',
+      url: 'http://rss.slashdot.org/Slashdot/slashdotMain',
+    },
+    {
+      name: 'IEEE Spectrum',
+      url: 'https://spectrum.ieee.org/feeds/feed.rss',
+    },
+    // Consumer Tech & Gadgets
+    {
+      name: 'Engadget',
+      url: 'https://www.engadget.com/rss.xml',
+    },
+    {
+      name: 'CNET',
+      url: 'https://www.cnet.com/rss/news/',
+    },
+    {
+      name: 'TechRadar',
+      url: 'https://www.techradar.com/rss',
+    },
+    {
+      name: 'ZDNet',
+      url: 'https://www.zdnet.com/news/rss.xml',
+    },
+    // Specialized Tech
+    {
+      name: 'Ars Technica Security',
+      url: 'https://arstechnica.com/security/feed/',
+    },
+    {
+      name: 'Ars Technica Gadgets',
+      url: 'https://arstechnica.com/gadgets/feed/',
+    },
+    {
+      name: 'Ars Technica Space',
+      url: 'https://arstechnica.com/space/feed/',
+    },
+    {
+      name: 'TechCrunch Startups',
+      url: 'https://techcrunch.com/category/startups/feed/',
+    },
+    {
+      name: 'The Verge Tech',
+      url: 'https://www.theverge.com/tech/rss/index.xml',
+    },
+    {
+      name: 'IEEE Spectrum Computing',
+      url: 'https://spectrum.ieee.org/feeds/computing.rss',
+    },
   ],
 };
