@@ -25,26 +25,15 @@ interface SkeletonCardProps {
 }
 
 export function SkeletonCard({ size }: SkeletonCardProps) {
-  const heights = {
-    small: 'h-48',
-    medium: 'h-64',
-    large: 'h-72',
-    featured: 'h-48',
-  };
-
   return (
-    <div className={cn('bg-gray-800 rounded-xl p-6 border border-gray-700', heights[size])}>
+    <div className="bg-gray-800 rounded-xl p-5 border border-gray-700 h-[280px]">
       <div className="flex justify-between items-start mb-4">
         <Skeleton className="h-6 w-24" />
         <Skeleton className="h-4 w-16" />
       </div>
       <Skeleton className="h-6 w-3/4 mb-3" />
-      {size !== 'small' && (
-        <>
-          <Skeleton className="h-4 w-full mb-2" />
-          <Skeleton className="h-4 w-5/6" />
-        </>
-      )}
+      <Skeleton className="h-4 w-full mb-2" />
+      <Skeleton className="h-4 w-5/6" />
     </div>
   );
 }
